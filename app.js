@@ -24,6 +24,8 @@
     beadsGroup: document.getElementById('beads'),
     startInput: document.getElementById('startInput'),
     targetInput: document.getElementById('targetInput'),
+    periodToggle: document.getElementById('periodToggle'),
+    periodButtons: Array.from(document.querySelectorAll('.period-btn')),
     resetBtn: document.getElementById('resetBtn'),
     muteBtn: document.getElementById('muteBtn'),
     muteIconOn: document.getElementById('muteIconOn'),
@@ -89,7 +91,7 @@
   }
 
   function defaultTab() {
-    return { text: '', count: 0, target: null, dismissedReached: false, dailyLog: [] };
+    return { text: '', count: 0, target: null, targetPeriod: 'daily', dismissedReached: false, dailyLog: [] };
   }
 
   function normalizeTab(raw) {
@@ -107,6 +109,7 @@
       text,
       count: Number.isFinite(raw.count) ? raw.count : 0,
       target: Number.isFinite(raw.target) ? raw.target : null,
+      targetPeriod: raw.targetPeriod === 'weekly' ? 'weekly' : 'daily',
       dismissedReached: !!raw.dismissedReached,
       dailyLog,
     };
@@ -221,6 +224,9 @@
     if (document.activeElement !== el.startInput) {
       el.startInput.value = tab.count;
     }
+    el.periodButtons.forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.period === tab.targetPeriod);
+    });
 
     const hasTarget = !!tab.target && tab.target > 0;
     const reached = hasTarget && tab.count >= tab.target;
@@ -228,7 +234,9 @@
     if (hasTarget) {
       const pct = Math.min(tab.count / tab.target, 1);
       el.ringProgress.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - pct));
-      el.targetLabel.textContent = `${tab.target}-ден`;
+      el.targetLabel.textContent = tab.targetPeriod === 'weekly'
+        ? `аптасына ${tab.target}`
+        : `${tab.target}-ден`;
       const beads = el.beadsGroup.querySelectorAll('.bead');
       beads.forEach((b, i) => {
         const threshold = (i + 1) / BEAD_COUNT;
@@ -355,14 +363,30 @@
 
   // ---- Weekly statistics screen ----
 
+  // Cross-prayer average for a single day column — only daily-target prayers
+  // have a meaningful per-day quota, so weekly-target prayers sit this out.
   function dayAverage(dayIndex, perTabCounts) {
     const pcts = [];
     state.tabs.forEach((tab, i) => {
-      if (!tab.target || tab.target <= 0) return;
+      if (!tab.target || tab.target <= 0 || tab.targetPeriod === 'weekly') return;
       const count = perTabCounts[i][dayIndex];
       pcts.push((count / tab.target) * 100);
     });
     if (!pcts.length) return null;
+    return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+  }
+
+  // A single prayer's row percentage: for a daily target, the average of its
+  // 7 daily percentages; for a weekly target, the whole week's total against
+  // the one weekly target (a fasting-style "did 2 of 7 days" goal doesn't
+  // have a meaningful per-day percentage to average).
+  function rowPercent(tab, counts) {
+    if (!tab.target || tab.target <= 0) return null;
+    if (tab.targetPeriod === 'weekly') {
+      const total = counts.reduce((a, b) => a + b, 0);
+      return Math.round((total / tab.target) * 100);
+    }
+    const pcts = counts.map(c => (c / tab.target) * 100);
     return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
   }
 
@@ -378,34 +402,36 @@
     const perTabCounts = state.tabs.map(tab => countsForDays(tab, WEEK_DAYS));
 
     // Body rows — one per prayer
+    const rowPercents = [];
     const bodyRows = state.tabs.map((tab, i) => {
       const counts = perTabCounts[i];
       const cells = [`<td class="stat-name">${escapeHtml(shortName(tab, i))}</td>`];
       counts.forEach(c => cells.push(`<td>${c}</td>`));
+      const pct = rowPercent(tab, counts);
+      rowPercents.push(pct);
       let pctCell;
-      if (tab.target && tab.target > 0) {
-        const pcts = counts.map(c => (c / tab.target) * 100);
-        const avg = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
-        pctCell = `<td class="stat-pct">${avg}%</td>`;
-      } else {
+      if (pct === null) {
         pctCell = '<td class="stat-pct stat-empty">–</td>';
+      } else if (tab.targetPeriod === 'weekly') {
+        pctCell = `<td class="stat-pct">${pct}%<span class="period-tag">апта</span></td>`;
+      } else {
+        pctCell = `<td class="stat-pct">${pct}%</td>`;
       }
       cells.push(pctCell);
       return `<tr>${cells.join('')}</tr>`;
     });
     el.statsBody.innerHTML = bodyRows.join('');
 
-    // Footer row — cross-prayer average per day, plus an overall corner average
+    // Footer row — cross-prayer average per day (daily-target prayers only),
+    // plus an overall corner average across every prayer's own row percentage.
     const footCells = ['<td class="stat-name">Орташа</td>'];
-    const dayAverages = [];
     for (let d = 0; d < WEEK_DAYS; d++) {
       const avg = dayAverage(d, perTabCounts);
-      dayAverages.push(avg);
       footCells.push(avg === null ? '<td class="stat-empty">–</td>' : `<td>${avg}%</td>`);
     }
-    const validAverages = dayAverages.filter(v => v !== null);
-    const corner = validAverages.length
-      ? Math.round(validAverages.reduce((a, b) => a + b, 0) / validAverages.length)
+    const validRowPercents = rowPercents.filter(v => v !== null);
+    const corner = validRowPercents.length
+      ? Math.round(validRowPercents.reduce((a, b) => a + b, 0) / validRowPercents.length)
       : null;
     footCells.push(corner === null ? '<td class="stat-pct stat-empty">–</td>' : `<td class="stat-pct">${corner}%</td>`);
     el.statsFootRow.innerHTML = footCells.join('');
@@ -488,6 +514,16 @@
     tab.dismissedReached = false;
     saveState();
     render();
+  });
+
+  el.periodButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = currentTab();
+      tab.targetPeriod = btn.dataset.period;
+      tab.dismissedReached = false;
+      saveState();
+      render();
+    });
   });
 
   state.tabs.forEach(pruneLog);
