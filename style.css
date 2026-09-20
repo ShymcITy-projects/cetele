@@ -315,6 +315,25 @@ body {
   min-width: 0;
 }
 
+.field-start {
+  flex: 0 0 30%;
+}
+
+.field-target {
+  flex: 1 1 70%;
+  padding-right: 8px;
+  gap: 6px;
+}
+
+.field-target .field-label {
+  flex: 0 0 auto;
+}
+
+.field-target .field-input {
+  flex: 1 1 auto;
+  min-width: 24px;
+}
+
 .field-label {
   font-size: 13px;
   color: var(--muted);
