@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#1F4B44">
+<title>Namaz Counter</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <nav id="tabBar" class="tab-bar" role="tablist" aria-label="Prayers">
+    <button class="tab-btn" type="button" role="tab" data-index="0"></button>
+    <button class="tab-btn" type="button" role="tab" data-index="1"></button>
+    <button class="tab-btn" type="button" role="tab" data-index="2"></button>
+    <button class="tab-btn" type="button" role="tab" data-index="3"></button>
+    <button class="tab-btn" type="button" role="tab" data-index="4"></button>
+    <button class="tab-btn" type="button" role="tab" data-index="5"></button>
+    <button class="tab-btn" type="button" role="tab" data-index="6"></button>
+  </nav>
+
+  <section class="text-panel">
+    <div class="text-toolbar">
+      <div class="font-controls">
+        <button id="fontSmallerBtn" class="font-btn" aria-label="Smaller text" type="button">A−</button>
+        <button id="fontBiggerBtn" class="font-btn" aria-label="Bigger text" type="button">A+</button>
+      </div>
+      <button id="statsBtn" class="stats-btn" type="button" aria-label="Weekly statistics">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="12" width="3.4" height="8" rx="1" fill="currentColor"/>
+          <rect x="10.3" y="7" width="3.4" height="13" rx="1" fill="currentColor"/>
+          <rect x="16.6" y="3" width="3.4" height="17" rx="1" fill="currentColor"/>
+        </svg>
+        <span>Апта</span>
+      </button>
+    </div>
+    <textarea
+      id="prayerText"
+      class="prayer-text"
+      placeholder="Дұғаны осында теріңіз немесе қойыңыз…"
+      spellcheck="false"
+    ></textarea>
+  </section>
+
+  <main class="ring-area">
+    <div class="tap-button">
+      <button id="tapSurface" class="tap-surface" aria-label="Count">
+        <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+          <circle class="ring-track" cx="100" cy="100" r="90"></circle>
+          <circle id="ringProgress" class="ring-progress" cx="100" cy="100" r="90"></circle>
+          <g id="beads"></g>
+        </svg>
+      </button>
+      <div class="ring-center">
+        <span id="countValue" class="count-value"></span>
+        <span id="targetLabel" class="target-label"></span>
+      </div>
+    </div>
+
+    <div id="reachedBanner" class="reached-banner" hidden>
+      <span>Мақсатқа жетті</span>
+      <button id="keepGoingBtn" class="text-btn">Жалғастыру</button>
+    </div>
+  </main>
+
+  <div class="bottom-bar">
+    <footer class="controls">
+      <div class="field-row">
+        <div class="input-field">
+          <label for="startInput" class="field-label">Бастау</label>
+          <input
+            id="startInput"
+            class="field-input"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            placeholder="0"
+          >
+        </div>
+        <div class="input-field">
+          <label for="targetInput" class="field-label">Мақсат</label>
+          <input
+            id="targetInput"
+            class="field-input"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            placeholder="Жоқ"
+          >
+        </div>
+      </div>
+      <div class="action-row">
+        <button id="muteBtn" class="mute-button" aria-label="Дыбысты өшіру" aria-pressed="false">
+          <svg id="muteIconOn" class="mute-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor"/>
+            <path d="M16.5 12c0-1.77-.77-3.29-2-4.24v8.48c1.23-.95 2-2.47 2-4.24z" fill="currentColor"/>
+          </svg>
+          <svg id="muteIconOff" class="mute-icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
+            <path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor"/>
+            <line x1="15.5" y1="8.5" x2="21.5" y2="15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <line x1="21.5" y1="8.5" x2="15.5" y2="15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button id="resetBtn" class="reset-button">Қайта бастау</button>
+      </div>
+    </footer>
+  </div>
+
+</div>
+
+<div id="flashOverlay" class="flash-overlay" aria-hidden="true"></div>
+
+<div id="resetConfirm" class="confirm-overlay" hidden>
+  <div class="confirm-card" role="alertdialog" aria-labelledby="resetConfirmTitle">
+    <p id="resetConfirmTitle" class="confirm-title">Санақты 0-ге қайта бастау керек пе?</p>
+    <p id="resetConfirmSub" class="confirm-sub">Мәтін мен мақсат өзгермейді.</p>
+    <div class="confirm-actions">
+      <button id="resetCancelBtn" class="confirm-btn confirm-btn-cancel">Бас тарту</button>
+      <button id="resetConfirmBtn" class="confirm-btn confirm-btn-danger">Қайта бастау</button>
+    </div>
+  </div>
+</div>
+
+<div id="statsScreen" class="stats-screen" hidden>
+  <div class="stats-header">
+    <h2 class="stats-title">Апталық статистика</h2>
+    <button id="statsCloseBtn" class="stats-close-btn" aria-label="Жабу" type="button">✕</button>
+  </div>
+  <div class="stats-table-wrap">
+    <table id="statsTable" class="stats-table">
+      <thead>
+        <tr id="statsHeadRow"></tr>
+      </thead>
+      <tbody id="statsBody"></tbody>
+      <tfoot>
+        <tr id="statsFootRow"></tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div id="rotateOverlay" class="rotate-overlay" aria-hidden="true">
+  <div class="rotate-card">
+    <svg viewBox="0 0 24 24" class="rotate-icon" aria-hidden="true">
+      <rect x="3" y="7" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M20 9V6a1 1 0 0 0-1-1h-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M19 4l1.6 1.6L19 7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p>Бұл қосымша тік бағдарда жақсы жұмыс істейді — құрылғыны қайта бұрыңыз.</p>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
