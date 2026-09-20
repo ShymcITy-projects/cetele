@@ -79,7 +79,7 @@ body {
 /* Prayer text panel — guaranteed at least 30% of viewport height */
 
 .text-panel {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 30vh;
@@ -190,7 +190,7 @@ body {
 /* Ring area */
 
 .ring-area {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
