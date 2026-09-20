@@ -9,9 +9,11 @@
   const FONT_MAX = 40;
   const FONT_STEP = 2;
   const FONT_DEFAULT = 20;
+  const NAME_MAX = 24;
 
   const el = {
     tabButtons: Array.from(document.querySelectorAll('.tab-btn')),
+    nameInput: document.getElementById('nameInput'),
     prayerText: document.getElementById('prayerText'),
     fontSmallerBtn: document.getElementById('fontSmallerBtn'),
     fontBiggerBtn: document.getElementById('fontBiggerBtn'),
@@ -34,6 +36,8 @@
     keepGoingBtn: document.getElementById('keepGoingBtn'),
     flashOverlay: document.getElementById('flashOverlay'),
     resetConfirm: document.getElementById('resetConfirm'),
+    resetConfirmTitle: document.getElementById('resetConfirmTitle'),
+    resetConfirmSub: document.getElementById('resetConfirmSub'),
     resetCancelBtn: document.getElementById('resetCancelBtn'),
     resetConfirmBtn: document.getElementById('resetConfirmBtn'),
     statsScreen: document.getElementById('statsScreen'),
@@ -92,7 +96,7 @@
   }
 
   function defaultTab() {
-    return { text: '', count: 0, target: null, targetPeriod: 'daily', dismissedReached: false, dailyLog: [] };
+    return { name: '', text: '', count: 0, target: null, targetPeriod: 'daily', dismissedReached: false, dailyLog: [] };
   }
 
   function normalizeTab(raw) {
@@ -103,10 +107,18 @@
         .filter(e => e && typeof e.date === 'string' && Number.isFinite(e.count))
         .map(e => ({ date: e.date, count: e.count }));
     }
-    // If migrating from a version that only had a short "name" field and no
-    // free-text prayer text, seed the text with that name so nothing is lost.
-    const text = typeof raw.text === 'string' ? raw.text : (typeof raw.name === 'string' ? raw.name : '');
+    const text = typeof raw.text === 'string' ? raw.text : '';
+    // Prayers now have their own user-editable name. For data saved by an older
+    // version (no "name" yet), seed the name from the first line of the text so
+    // existing tab titles are kept exactly as they were.
+    let name;
+    if (typeof raw.name === 'string') {
+      name = raw.name;
+    } else {
+      name = text.trim().split('\n')[0].trim().slice(0, NAME_MAX);
+    }
     return {
+      name,
       text,
       count: Number.isFinite(raw.count) ? raw.count : 0,
       target: Number.isFinite(raw.target) ? raw.target : null,
@@ -180,11 +192,10 @@
     return result;
   }
 
+  // Display name of a prayer: the name the user typed, or its number if empty.
   function shortName(tab, index) {
-    const trimmed = (tab.text || '').trim();
-    if (!trimmed) return String(index + 1);
-    const firstLine = trimmed.split('\n')[0].trim();
-    return firstLine.length > 14 ? firstLine.slice(0, 14).trim() + '…' : firstLine;
+    const name = (tab.name || '').trim();
+    return name || String(index + 1);
   }
 
   function buildBeads() {
@@ -218,6 +229,7 @@
     const tab = currentTab();
 
     renderTabBar();
+    el.nameInput.value = tab.name;
     el.prayerText.value = tab.text;
 
     el.countValue.textContent = tab.count;
@@ -483,10 +495,15 @@
 
   el.tapSurface.addEventListener('click', increment);
 
+  el.nameInput.addEventListener('input', () => {
+    currentTab().name = el.nameInput.value;
+    saveState();
+    renderTabBar();
+  });
+
   el.prayerText.addEventListener('input', () => {
     currentTab().text = el.prayerText.value;
     saveState();
-    renderTabBar();
   });
 
   el.fontSmallerBtn.addEventListener('click', () => {
