@@ -1,4 +1,4 @@
-const CACHE_NAME = 'namaz-counter-v4';
+const CACHE_NAME = 'namaz-counter-v6';
 const ASSETS = [
   './',
   './index.html',

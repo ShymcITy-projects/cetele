@@ -45,6 +45,7 @@
 
   let state = loadState();
   let audioCtx = null;
+  let pendingConfirmAction = null;
 
   function getAudioContext() {
     if (audioCtx) return audioCtx;
@@ -345,11 +346,23 @@
   }
 
   function openResetConfirm() {
+    el.resetConfirmTitle.textContent = 'Санақты 0-ге қайта бастау керек пе?';
+    el.resetConfirmSub.textContent = 'Мәтін мен мақсат өзгермейді.';
+    pendingConfirmAction = { type: 'count' };
+    el.resetConfirm.hidden = false;
+  }
+
+  function openResetTodayConfirm(index) {
+    const tab = state.tabs[index];
+    el.resetConfirmTitle.textContent = 'Бүгінгі санды 0-ге келтіру керек пе?';
+    el.resetConfirmSub.textContent = `${shortName(tab, index)} үшін алдыңғы күндер өзгермейді.`;
+    pendingConfirmAction = { type: 'today', index };
     el.resetConfirm.hidden = false;
   }
 
   function closeResetConfirm() {
     el.resetConfirm.hidden = true;
+    pendingConfirmAction = null;
   }
 
   function performReset() {
@@ -358,6 +371,15 @@
     tab.dismissedReached = false;
     saveState();
     render();
+    closeResetConfirm();
+  }
+
+  function performResetToday(index) {
+    const tab = state.tabs[index];
+    getOrCreateTodayEntry(tab).count = 0;
+    saveState();
+    render();
+    if (!el.statsScreen.hidden) buildStatsTable();
     closeResetConfirm();
   }
 
@@ -406,7 +428,8 @@
     const bodyRows = state.tabs.map((tab, i) => {
       const counts = perTabCounts[i];
       const cells = [`<td class="stat-name">${escapeHtml(shortName(tab, i))}</td>`];
-      counts.forEach(c => cells.push(`<td>${c}</td>`));
+      cells.push(`<td><div class="today-cell"><span>${counts[0]}</span><button class="stat-reset-btn" data-reset-today="${i}" aria-label="Бүгінгі санды 0-ге келтіру" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg></button></div></td>`);
+      counts.slice(1).forEach(c => cells.push(`<td>${c}</td>`));
       const pct = rowPercent(tab, counts);
       rowPercents.push(pct);
       let pctCell;
@@ -480,6 +503,11 @@
 
   el.statsBtn.addEventListener('click', openStats);
   el.statsCloseBtn.addEventListener('click', closeStats);
+  el.statsBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-reset-today]');
+    if (!btn) return;
+    openResetTodayConfirm(Number(btn.dataset.resetToday));
+  });
 
   el.startInput.addEventListener('input', () => {
     const val = parseInt(el.startInput.value, 10);
@@ -490,7 +518,13 @@
 
   el.resetBtn.addEventListener('click', openResetConfirm);
   el.resetCancelBtn.addEventListener('click', closeResetConfirm);
-  el.resetConfirmBtn.addEventListener('click', performReset);
+  el.resetConfirmBtn.addEventListener('click', () => {
+    if (pendingConfirmAction && pendingConfirmAction.type === 'today') {
+      performResetToday(pendingConfirmAction.index);
+    } else {
+      performReset();
+    }
+  });
   el.resetConfirm.addEventListener('click', (e) => {
     if (e.target === el.resetConfirm) closeResetConfirm();
   });
