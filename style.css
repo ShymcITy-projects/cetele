@@ -299,12 +299,12 @@ body {
 }
 
 .field-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 30% 70%;
   gap: 10px;
 }
 
 .input-field {
-  flex: 1 1 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -315,12 +315,7 @@ body {
   min-width: 0;
 }
 
-.field-start {
-  flex: 0 0 30%;
-}
-
 .field-target {
-  flex: 1 1 70%;
   padding-right: 8px;
   gap: 6px;
 }
